@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-writer
+  labels:
+    app: {{ .Release.Name }}
+    component: writer
+spec:
+  replicas: {{ .Values.writer.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+      component: writer
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+        component: writer
+    spec:
+      containers:
+        - name: writer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 3000
+          
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+          
+          
+          env:
+            - name: APP_MODE
+              value: "writer"
+
+          resources:
+            {{- toYaml .Values.writer.resources | nindent 12 }}
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5

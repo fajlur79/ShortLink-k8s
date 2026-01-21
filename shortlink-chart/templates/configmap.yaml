@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    apps: {{ .Release.Name}}
+data:
+  PORT: "3000"
+  BASE_URL: {{ .Values.config.baseUrl | quote }}
+  REDIS_URL: {{ .Values.config.redisUrl }}

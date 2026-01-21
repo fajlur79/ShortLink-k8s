@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-reader
+  labels:
+    app: {{ .Release.Name }}
+    component: reader
+spec:
+  replicas: {{ .Values.reader.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+      component: reader
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+        component: reader
+    spec:
+      containers:
+        - name: reader
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 3000
+          
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+          
+          env:
+            - name: APP_MODE
+              value: "reader"
+
+          resources:
+            {{- toYaml .Values.reader.resources | nindent 12 }}
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
