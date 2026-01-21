@@ -13,9 +13,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
 app.use(metricsMiddleware);
-// if (process.env.NODE_ENV !== "test") {
-//     app.set("trust proxy", 1);
-// }
+if (process.env.NODE_ENV !== "test") {
+    app.set("trust proxy", 1);
+}
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 

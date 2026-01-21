@@ -1,55 +1,77 @@
 image:
-  repository: ghcr.io/fajlur79/shortlink
-  pullPolicy: Always
-  tag: "latest"
+    repository: 013416764691.dkr.ecr.ap-south-1.amazonaws.com/shortlink-app
+    pullPolicy: Always
+    tag: "latest"
 
 config:
-  baseUrl: "http://shortlink.local"
-  redisUrl: "redis://shortlink-redis-master:6379"
+    baseUrl: "https://shortlink.local.local"
+    redisUrl: "redis://shortlink-redis-master:6379"
 
 reader:
-  enabled: true
-  replicaCount: 2
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits: 
-      cpu: "200m"
-      memory: "256Mi"
+    enabled: true
+    replicaCount: 2
+    resources:
+        requests:
+            cpu: "100m"
+            memory: "128Mi"
+        limits:
+            cpu: "200m"
+            memory: "256Mi"
+
+    livenessProbe:
+        httpGet:
+            path: /
+            port: 80
+        initialDelaySeconds: 30
+        periodSeconds: 10
+    readinessProbe:
+        httpGet:
+            path: /
+            port: 80
+        initialDelaySeconds: 5
+        periodSeconds: 5
 
 writer:
-  enabled: true
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits:
-      cpu: "200m"
-      memory: "256Mi"
+    enabled: true
+    replicaCount: 1
+    resources:
+        requests:
+            cpu: "100m"
+            memory: "128Mi"
+        limits:
+            cpu: "200m"
+            memory: "256Mi"
+    livenessProbe:
+        tcpSocket:
+            port: 80
+        initialDelaySeconds: 30
+        periodSeconds: 10
+    readinessProbe:
+        tcpSocket:
+            port: 80
+        initialDelaySeconds: 5
+        periodSeconds: 5
 
 redis:
-  enabled: true
-  architecture: standalone
-  auth:
-    enabled: false
-  master:
-    persistence:
-      enabled: false
-  
-  image: 
-    registry: public.ecr.aws
-    repository: bitnami/redis
+    enabled: true
+    architecture: standalone
+    auth:
+        enabled: false
+    master:
+        persistence:
+            enabled: false
+
+    image:
+        registry: public.ecr.aws
+        repository: bitnami/redis
 
 ingress:
-  enabled: true
-  className: "alb"
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-  hosts:
-    - host: shortlink.local
-      paths:
-        - path: /
-          pathType: Prefix
+    enabled: true
+    className: "nginx"
+    annotations:
+        nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    hosts:
+        - host: ""
+          paths:
+              - path: /
+                pathType: Prefix
