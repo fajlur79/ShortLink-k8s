@@ -1,5 +1,7 @@
+import { jest } from "@jest/globals";
 import request from "supertest";
 
+process.env.APP_MODE = "monolith";
 const { default: app } = await import("../app.js");
 const { default: redisClient } = await import("../services/redisClient.js");
 
@@ -10,23 +12,31 @@ afterAll(async () => {
 });
 
 describe("ShortLink Integration Tests", () => {
+    jest.setTimeout(30000);
+
+    it("should verify Redis is connected", async () => {
+        await redisClient.set("sanity-check", "alive");
+        const val = await redisClient.get("sanity-check");
+        expect(val).toEqual("alive");
+    });
+
     it("GET /health should return 200 OK", async () => {
         const res = await request(app).get("/health");
         expect(res.statusCode).toEqual(200);
     });
 
     it("POST /shorten should save to Redis", async () => {
-        const testToken = "test-api-key-123";
-        await redisClient.set(`validtoken:${testToken}`, "active");
+        const uniqueToken = `test-user-${Date.now()}`;
+        await redisClient.set(`validtoken:${uniqueToken}`, "active");
 
         const res = await request(app)
             .post("/shorten")
-            .set("Cookie", ["deviceId=test-device-123"])
-            .set("x-api-key", testToken)
-            .send({ url: "https://www.google.com" });
+            .set("x-api-key", uniqueToken)
+            .set("Cookie", ["deviceId=test-device-1"])
+            .send({ url: "https://www.google.com/" });
 
         if (res.statusCode !== 200) {
-            console.log("Test Failed Response:", res.body);
+            console.error("/shorten Failed:", res.body);
         }
 
         expect(res.statusCode).toEqual(200);
@@ -47,7 +57,7 @@ describe("ShortLink Integration Tests", () => {
     });
 
     it("GET /:id should return 404 for missing keys", async () => {
-        const res = await request(app).get("/nonexistent_key");
+        const res = await request(app).get("/nonexistent-key");
         expect(res.statusCode).toEqual(404);
     });
 });
