@@ -1,0 +1,108 @@
+name: Deploy to EKS (AWS ECR)
+
+on:
+    push:
+        branches: ["main"]
+
+env:
+    AWS_REGION: ap-south-1
+    EKS_CLUSTER_NAME: shortlink-cluster
+    ECR_REPOSITORY: shortlink-app
+
+jobs:
+    test:
+        name: Unit & Integration Tests
+        runs-on: ubuntu-latest
+        services:
+            redis:
+                image: redis
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "redis-cli ping"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+
+            - name: Install Dependencies
+              run: npm ci
+
+            - name: Run Tests
+              env:
+                  REDIS_URL: redis://localhost:6379
+              run: npm test
+
+    build-and-push:
+        needs: test
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        outputs:
+            registry: ${{ steps.login-ecr.outputs.registry }}
+            image_tag: ${{ github.sha }}
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: Build and Push Docker Image
+              env:
+                  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+                  docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    deploy:
+        needs: build-and-push
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: Install Helm
+              uses: azure/setup-helm@v4
+              with:
+                  version: "v3.11.1"
+
+            - name: Update Kubeconfig
+              run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+            - name: Deploy to EKS
+              env:
+                  ECR_REGISTRY: ${{ needs.build-and-push.outputs.registry }}
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  helm upgrade --install shortlink ./shortlink-chart \
+                    --set image.repository=$ECR_REGISTRY/$ECR_REPOSITORY \
+                    --set image.tag=$IMAGE_TAG \
+                    --wait
