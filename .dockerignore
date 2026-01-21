@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+Dockerfile
+.dockerignore
+.git
+.gitignore
+README.md
+docs
+test
+terraform
+K8s
+shortlink-chart
+.env
+.env.production
+.DS_Store
