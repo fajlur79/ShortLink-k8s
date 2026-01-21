@@ -4,7 +4,7 @@ image:
     tag: "latest"
 
 config:
-    baseUrl: "https://shortlink.local.local"
+    baseUrl: "https://shorts.codes.local"
     redisUrl: "redis://shortlink-redis-master:6379"
 
 reader:
@@ -20,13 +20,13 @@ reader:
 
     livenessProbe:
         httpGet:
-            path: /
+            path: /health
             port: 80
         initialDelaySeconds: 30
         periodSeconds: 10
     readinessProbe:
         httpGet:
-            path: /
+            path: /health
             port: 80
         initialDelaySeconds: 5
         periodSeconds: 5
@@ -42,12 +42,14 @@ writer:
             cpu: "200m"
             memory: "256Mi"
     livenessProbe:
-        tcpSocket:
+        httpGet:
+            path: /health
             port: 80
         initialDelaySeconds: 30
         periodSeconds: 10
     readinessProbe:
-        tcpSocket:
+        httpGet:
+            path: /health
             port: 80
         initialDelaySeconds: 5
         periodSeconds: 5
@@ -69,6 +71,8 @@ ingress:
     enabled: true
     className: "nginx"
     annotations:
+        nginx.ingress.kubernetes.io/limit-rps: "10"
+        nginx.ingress.kubernetes.io/limit-burst: "20"
         nginx.ingress.kubernetes.io/proxy-body-size: "8m"
     hosts:
         - host: ""
