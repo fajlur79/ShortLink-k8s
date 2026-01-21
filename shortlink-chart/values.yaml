@@ -4,7 +4,7 @@ image:
     tag: "latest"
 
 config:
-    baseUrl: "https://shortlink.local.local"
+    baseUrl: "https://shorts.codes.local"
     redisUrl: "redis://shortlink-redis-master:6379"
 
 reader:
