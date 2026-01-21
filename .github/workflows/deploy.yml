@@ -3,6 +3,8 @@ name: Deploy to EKS (AWS ECR)
 on:
     push:
         branches: ["main"]
+    pull_request:
+        branches: ["main"]
 
 env:
     AWS_REGION: ap-south-1
@@ -31,7 +33,7 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: "20"
+                  node-version: "24"
 
             - name: Install Dependencies
               run: npm ci
@@ -44,6 +46,7 @@ jobs:
     build-and-push:
         needs: test
         runs-on: ubuntu-latest
+        if: github.event_name == 'push'
         permissions:
             contents: read
 
@@ -77,7 +80,7 @@ jobs:
     deploy:
         needs: build-and-push
         runs-on: ubuntu-latest
-
+        if: github.event_name == 'push'
         steps:
             - name: Checkout Code
               uses: actions/checkout@v4
@@ -92,7 +95,7 @@ jobs:
             - name: Install Helm
               uses: azure/setup-helm@v4
               with:
-                  version: "v3.11.1"
+                  version: "v3.19.4"
 
             - name: Update Kubeconfig
               run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
